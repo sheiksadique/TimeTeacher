@@ -12,7 +12,15 @@
       <div class="start-card">
         <h1 id="start-title">TimeTeacher</h1>
         <p class="start-hint">Tap Start — then you will hear the questions (works best after a tap).</p>
-        <button type="button" class="btn btn--primary btn--xl" id="btn-start">Start</button>
+        <div class="segmented segmented--start" role="group" aria-label="Mode">
+          <button type="button" class="btn segmented__btn" id="btn-mode-start-time" aria-pressed="true">
+            🕒 Time
+          </button>
+          <button type="button" class="btn segmented__btn" id="btn-mode-start-numbers" aria-pressed="false">
+            🔢 Numbers
+          </button>
+        </div>
+        <button type="button" class="btn btn--primary btn--xl" id="btn-start">▶️ Start</button>
       </div>
     </div>
 
@@ -20,6 +28,16 @@
       <header class="app__header">
         <h1 class="app__title">What time is it?</h1>
         <div class="app__actions">
+          <button type="button" class="btn btn--ghost btn--icon" id="btn-home" aria-label="Back to start" title="Back to start">
+            <span aria-hidden="true">←</span>
+          </button>
+          <div class="segmented" role="group" aria-label="Mode">
+            <button type="button" class="btn segmented__btn" id="btn-mode-time" aria-pressed="true">Time</button>
+            <button type="button" class="btn segmented__btn" id="btn-mode-numbers" aria-pressed="false">
+              Numbers
+            </button>
+          </div>
+          <div id="session-scores" class="session-scores" aria-label="Score"></div>
           <label class="lang" for="lang" aria-label="Language">
             <span class="lang__label">Language</span>
             <select id="lang" class="lang__select">
@@ -27,8 +45,14 @@
               <option value="de">Deutsch</option>
             </select>
           </label>
-          <button type="button" class="btn btn--ghost" id="btn-repeat" aria-label="Say the question again">Say it again</button>
-          <button type="button" class="btn btn--ghost" id="btn-hint" aria-label="Show a hint" hidden>Hint</button>
+          <button type="button" class="btn btn--ghost" id="btn-repeat" aria-label="Say the question again">
+            <span class="btn__icon" aria-hidden="true">🔁</span>
+            <span class="btn__label">Say it again</span>
+          </button>
+          <button type="button" class="btn btn--ghost" id="btn-hint" aria-label="Show a hint" hidden>
+            <span class="btn__icon" aria-hidden="true">💡</span>
+            <span class="btn__label">Hint</span>
+          </button>
         </div>
       </header>
 
@@ -45,6 +69,10 @@
           <circle class="clock__cap" cx="100" cy="100" r="4" />
         </svg>
       </div>
+
+      <section class="numbers" id="numbers-panel" hidden aria-label="Number prompt">
+        <div class="numbers__value" id="numbers-value" aria-hidden="true">42</div>
+      </section>
 
       <section class="choices" aria-label="Answer choices">
         <p class="choices__hint" id="choices-hint">Listen, then tap the right answer.</p>

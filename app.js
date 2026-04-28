@@ -13,6 +13,98 @@
   /** @type {"en" | "de"} */
   let currentLang = "en";
 
+  /** @type {"time" | "numbers"} */
+  let currentMode = "time";
+
+  // ——— Numbers (11–99) ———
+
+  const NUMBER_POOL = Array.from({ length: 99 - 11 + 1 }, (_, i) => i + 11);
+
+  /** @param {number} n */
+  function numberToSpeechEn(n) {
+    const ones = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+    const teens = {
+      10: "ten",
+      11: "eleven",
+      12: "twelve",
+      13: "thirteen",
+      14: "fourteen",
+      15: "fifteen",
+      16: "sixteen",
+      17: "seventeen",
+      18: "eighteen",
+      19: "nineteen",
+    };
+    const tensMap = {
+      20: "twenty",
+      30: "thirty",
+      40: "forty",
+      50: "fifty",
+      60: "sixty",
+      70: "seventy",
+      80: "eighty",
+      90: "ninety",
+    };
+
+    // @ts-ignore
+    if (teens[n]) return teens[n];
+    const tens = Math.floor(n / 10) * 10;
+    const one = n % 10;
+    // @ts-ignore
+    if (one === 0) return tensMap[tens] || String(n);
+    // @ts-ignore
+    const tensWord = tensMap[tens] || String(tens);
+    return `${tensWord}-${ones[one]}`;
+  }
+
+  /** @param {number} n */
+  function numberToSpeechDe(n) {
+    const ones = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun"];
+    const teens = {
+      10: "zehn",
+      11: "elf",
+      12: "zwölf",
+      13: "dreizehn",
+      14: "vierzehn",
+      15: "fünfzehn",
+      16: "sechzehn",
+      17: "siebzehn",
+      18: "achtzehn",
+      19: "neunzehn",
+    };
+    const tensMap = {
+      20: "zwanzig",
+      30: "dreißig",
+      40: "vierzig",
+      50: "fünfzig",
+      60: "sechzig",
+      70: "siebzig",
+      80: "achtzig",
+      90: "neunzig",
+    };
+
+    // @ts-ignore
+    if (teens[n]) return teens[n];
+    const tens = Math.floor(n / 10) * 10;
+    const one = n % 10;
+    // @ts-ignore
+    if (one === 0) return tensMap[tens] || String(n);
+    const oneWord = one === 1 ? "ein" : ones[one];
+    // @ts-ignore
+    const tensWord = tensMap[tens] || String(tens);
+    return `${oneWord}und${tensWord}`;
+  }
+
+  /** @param {number} n */
+  function numberToSpeech(n) {
+    return currentLang === "de" ? numberToSpeechDe(n) : numberToSpeechEn(n);
+  }
+
+  /** @param {number} n */
+  function numberToAria(n) {
+    return numberToSpeech(n);
+  }
+
   const NUMBER_WORDS_EN = [
     "twelve",
     "one",
@@ -123,22 +215,41 @@
   }
 
   /**
-   * Speak text; cancels pending utterances. Optional onend after this utterance.
+   * Start a new "speech session" (cancels anything pending).
+   * Anything queued in older sessions is ignored.
+   */
+  function startSpeechSession() {
+    speechSynthesis.cancel();
+    return ++speakSeq;
+  }
+
+  /**
+   * Speak a single utterance within an existing session.
+   * @param {number} sessionId
    * @param {string} text
    * @param {{ rate?: number, onend?: () => void }} [opts]
    */
-  function speak(text, opts) {
-    const myId = ++speakSeq;
-    speechSynthesis.cancel();
+  function speakInSession(sessionId, text, opts) {
+    if (sessionId !== speakSeq) return;
     const u = new SpeechSynthesisUtterance(text);
     u.rate = opts && opts.rate != null ? opts.rate : 0.92;
     u.pitch = 1;
     const v = getPreferredVoice();
     if (v) u.voice = v;
     u.onend = () => {
-      if (myId === speakSeq && opts && opts.onend) opts.onend();
+      if (sessionId === speakSeq && opts && opts.onend) opts.onend();
     };
     speechSynthesis.speak(u);
+  }
+
+  /**
+   * Speak text; cancels pending utterances. Optional onend after this utterance.
+   * @param {string} text
+   * @param {{ rate?: number, onend?: () => void }} [opts]
+   */
+  function speak(text, opts) {
+    const sessionId = startSpeechSession();
+    speakInSession(sessionId, text, opts);
   }
 
   function speakLater(text, ms, opts) {
@@ -285,18 +396,94 @@
 
   // ——— Quiz ———
 
-  /** @type {ClockTime | null} */
+  /** @type {ClockTime | number | null} */
   let currentTarget = null;
 
-  /** @type {"normal" | "reverse"} */
+  /** @type {"normal" | "reverse" | "audioToNumber" | "numberToAudio"} */
   let currentRoundType = "normal";
 
-  /** @type {ClockTime[]} */
+  /** @type {Array<ClockTime | number>} */
   let currentOptions = [];
 
   let interactionLocked = false;
 
   let hintShown = false;
+
+  // ——— Per-mode session scoring (resets on refresh / Home) ———
+
+  const scoreByMode = {
+    time: { correct: 0, wrong: 0 },
+    numbers: { correct: 0, wrong: 0 },
+  };
+
+  function resetScores() {
+    scoreByMode.time.correct = 0;
+    scoreByMode.time.wrong = 0;
+    scoreByMode.numbers.correct = 0;
+    scoreByMode.numbers.wrong = 0;
+    renderScores();
+  }
+
+  /**
+   * @param {"time" | "numbers"} mode
+   * @param {boolean} isCorrect
+   */
+  function bumpScore(mode, isCorrect) {
+    if (isCorrect) scoreByMode[mode].correct++;
+    else scoreByMode[mode].wrong++;
+    renderScores();
+  }
+
+  function renderScores() {
+    const host = document.getElementById("session-scores");
+    if (!host) return;
+    host.replaceChildren();
+
+    /** @param {"time" | "numbers"} mode */
+    const add = (mode) => {
+      const s = scoreByMode[mode];
+      const total = s.correct + s.wrong;
+      // Barometer-style level: rises with accuracy (0–100).
+      const level = total ? Math.round((s.correct / total) * 100) : 50;
+      // Hue: 0 = red, 55 = amber, 120 = green.
+      const hue = Math.max(0, Math.min(120, Math.round((level / 100) * 120)));
+
+      const card = document.createElement("div");
+      card.className = "scorecard";
+      if (total === 0) card.setAttribute("aria-disabled", "true");
+      card.setAttribute(
+        "aria-label",
+        `${mode === "time" ? "Time" : "Numbers"} score: ${s.correct} correct, ${s.wrong} wrong`
+      );
+
+      const label = document.createElement("span");
+      label.className = "scorecard__label";
+      label.textContent = mode === "time" ? "🕒" : "🔢";
+
+      const gauge = document.createElement("div");
+      gauge.className = "scoregauge";
+      gauge.style.setProperty("--level", String(level));
+      gauge.style.setProperty("--hue", String(hue));
+      gauge.setAttribute("aria-hidden", "true");
+
+      const fill = document.createElement("div");
+      fill.className = "scoregauge__fill";
+      gauge.appendChild(fill);
+
+      const counts = document.createElement("span");
+      counts.className = "scorecard__counts";
+      counts.textContent = `✓ ${s.correct}  ✕ ${s.wrong}`;
+
+      card.appendChild(label);
+      card.appendChild(gauge);
+      card.appendChild(counts);
+      host.appendChild(card);
+    };
+
+    // Show both mode sessions; they’ll “wake up” once used.
+    add("time");
+    add("numbers");
+  }
 
   function shuffle(a) {
     const arr = a.slice();
@@ -314,29 +501,138 @@
     return shuffled.slice(0, 3);
   }
 
+  /** @param {number} target */
+  function pickNumberDistractors(target) {
+    /** @type {number[]} */
+    const out = [];
+    const add = (n) => {
+      if (n < 11 || n > 99) return;
+      if (n === target) return;
+      if (out.includes(n)) return;
+      out.push(n);
+    };
+
+    const tens = Math.floor(target / 10);
+    const ones = target % 10;
+
+    // Swapped digits (e.g. 34 vs 43)
+    const swapped = ones * 10 + tens;
+    add(swapped);
+
+    // Same tens
+    add(tens * 10 + ((ones + 3) % 10));
+    add(tens * 10 + ((ones + 7) % 10));
+
+    // Nearby
+    add(target + 1);
+    add(target - 1);
+    add(target + 2);
+    add(target - 2);
+
+    // Fill randomly if needed
+    const pool = shuffle(NUMBER_POOL.filter((n) => n !== target));
+    for (const n of pool) {
+      if (out.length >= 3) break;
+      add(n);
+    }
+
+    return out.slice(0, 3);
+  }
+
   function newRound() {
     setLive("");
     hintShown = false;
-    currentTarget = TIME_POOL[Math.floor(Math.random() * TIME_POOL.length)];
-    currentRoundType = Math.random() < 0.5 ? "reverse" : "normal";
-    const wrong = pickDistractors(currentTarget);
-    currentOptions = shuffle([currentTarget, ...wrong]);
+
+    if (currentMode === "numbers") {
+      const target = NUMBER_POOL[Math.floor(Math.random() * NUMBER_POOL.length)];
+      currentTarget = target;
+      currentRoundType = Math.random() < 0.5 ? "audioToNumber" : "numberToAudio";
+      const wrong = pickNumberDistractors(target);
+      currentOptions = shuffle([target, ...wrong]);
+    } else {
+      const target = TIME_POOL[Math.floor(Math.random() * TIME_POOL.length)];
+      currentTarget = target;
+      currentRoundType = Math.random() < 0.5 ? "reverse" : "normal";
+      const wrong = pickDistractors(target);
+      currentOptions = shuffle([target, ...wrong]);
+    }
+
     renderClock();
+    renderNumbers();
     renderChoices();
     interactionLocked = true;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        clearChoiceSpeaking();
         speakQuestion();
         interactionLocked = false;
       });
     });
   }
 
+  function clearChoiceSpeaking() {
+    const els = document.querySelectorAll("#choices-root .is-speaking");
+    els.forEach((el) => el.classList.remove("is-speaking"));
+  }
+
+  /**
+   * In Numbers → "numberToAudio" rounds, automatically read out each choice
+   * while briefly highlighting the corresponding 🔊 button.
+   * @param {number} sessionId
+   */
+  function autoReadNumberToAudioChoices(sessionId) {
+    if (sessionId !== speakSeq) return;
+    if (currentRoundType !== "numberToAudio") return;
+
+    const btns = Array.from(document.querySelectorAll("#choices-root .btn--audiopick"));
+    if (!btns.length) return;
+
+    const values = btns.map((b) => Number(b.dataset.value || ""));
+    let i = 0;
+
+    const next = () => {
+      if (sessionId !== speakSeq) return clearChoiceSpeaking();
+      clearChoiceSpeaking();
+      const btn = btns[i];
+      const value = values[i];
+      if (btn && Number.isFinite(value)) btn.classList.add("is-speaking");
+      speakInSession(sessionId, numberToSpeech(value), {
+        rate: 0.88,
+        onend: () => {
+          if (sessionId !== speakSeq) return clearChoiceSpeaking();
+          if (btn) btn.classList.remove("is-speaking");
+          i++;
+          if (i >= btns.length) return;
+          setTimeout(next, 160);
+        },
+      });
+    };
+
+    next();
+  }
+
   function speakQuestion() {
     if (!currentTarget) return;
+    const ui = tUi();
+
+    if (currentRoundType === "audioToNumber") {
+      const n = /** @type {number} */ (currentTarget);
+      speak(`${ui.numbersAudioToNumberPrompt} ${numberToSpeech(n)}`, { onend: () => {} });
+      return;
+    }
+
+    if (currentRoundType === "numberToAudio") {
+      const sessionId = startSpeechSession();
+      clearChoiceSpeaking();
+      speakInSession(sessionId, ui.numbersNumberToAudioPrompt, {
+        onend: () => autoReadNumberToAudioChoices(sessionId),
+      });
+      return;
+    }
+
     if (currentRoundType === "reverse") {
       const ui = tUi();
-      const phrase = phraseForTime(currentTarget);
+      const phrase = phraseForTime(/** @type {ClockTime} */ (currentTarget));
       speak(`${ui.reversePrompt} ${phrase}`, { onend: () => {} });
       return;
     }
@@ -352,43 +648,63 @@
   function tUi() {
     return currentLang === "de"
       ? {
-          title: "Wie spät ist es?",
-          hint: "Hör zu und tippe die richtige Antwort.",
+          titleTime: "Wie spät ist es?",
+          titleNumbers: "Zahlen",
+          hintTime: "Hör zu und tippe die richtige Antwort.",
+          hintNumbersAudioToNumber: "Hör zu und tippe die richtige Zahl.",
+          hintNumbersNumberToAudio: "Schau hin und tippe den richtigen Klang.",
           repeat: "Nochmal sagen",
           repeatAria: "Frage nochmal sagen",
           hintBtn: "Tipp",
           hintAria: "Tipp anzeigen",
           reversePrompt: "Finde die Uhr für",
+          numbersAudioToNumberPrompt: "Welche Zahl hast du gehört?",
+          numbersNumberToAudioPrompt: "Welcher Klang passt zu dieser Zahl?",
+          modeTime: "Zeit",
+          modeNumbers: "Zahlen",
           listenAria: (p) => `Anhören: ${p}`,
           chooseAria: (p) => `Wähle ${p}`,
           chooseClockAria: (p) => `Wähle die Uhr: ${p}`,
+          chooseNumberAria: (n) => `Wähle ${n}`,
+          chooseSoundAria: (p) => `Wähle den Klang: ${p}`,
           correctLive: "Richtig!",
           tryAgainLive: "Nochmal versuchen.",
           notQuite: "Nicht ganz. Versuch eine andere Antwort.",
           ready: "Bereit für die nächste?",
           start: "Start",
           startHint: "Tippe Start — dann hörst du die Fragen (Audio braucht oft einen Tipp).",
-          look: "Schau auf die Uhr!",
+          lookTime: "Schau auf die Uhr!",
+          lookNumbers: "Los geht's mit Zahlen!",
           praises: ["Ja! Genau!", "Super!", "Toll gemacht!", "Richtig!"],
         }
       : {
-          title: "What time is it?",
-          hint: "Listen, then tap the right answer.",
+          titleTime: "What time is it?",
+          titleNumbers: "Numbers",
+          hintTime: "Listen, then tap the right answer.",
+          hintNumbersAudioToNumber: "Listen, then tap the right number.",
+          hintNumbersNumberToAudio: "Look, then tap the right sound.",
           repeat: "Say it again",
           repeatAria: "Say the question again",
           hintBtn: "Hint",
           hintAria: "Show a hint",
           reversePrompt: "Find the clock for",
+          numbersAudioToNumberPrompt: "Which number did you hear?",
+          numbersNumberToAudioPrompt: "Which sound matches this number?",
+          modeTime: "Time",
+          modeNumbers: "Numbers",
           listenAria: (p) => `Listen: ${p}`,
           chooseAria: (p) => `Choose ${p}`,
           chooseClockAria: (p) => `Choose the clock: ${p}`,
+          chooseNumberAria: (n) => `Choose ${n}`,
+          chooseSoundAria: (p) => `Choose the sound: ${p}`,
           correctLive: "Correct!",
           tryAgainLive: "Try again.",
           notQuite: "Not quite. Try another answer.",
           ready: "Ready for another one?",
           start: "Start",
           startHint: "Tap Start — then you will hear the questions (works best after a tap).",
-          look: "Let's look at the clock!",
+          lookTime: "Let's look at the clock!",
+          lookNumbers: "Let's do numbers!",
           praises: ["Yes! That's right!", "Great job!", "You got it!", "Super!"],
         };
   }
@@ -401,9 +717,20 @@
     const hintBtn = document.getElementById("btn-hint");
     const startHint = document.querySelector(".start-hint");
     const startBtn = document.getElementById("btn-start");
+    const btnModeTime = document.getElementById("btn-mode-time");
+    const btnModeNumbers = document.getElementById("btn-mode-numbers");
+    const btnModeStartTime = document.getElementById("btn-mode-start-time");
+    const btnModeStartNumbers = document.getElementById("btn-mode-start-numbers");
 
-    if (titleEl) titleEl.textContent = ui.title;
-    if (hintEl) hintEl.textContent = ui.hint;
+    if (titleEl) titleEl.textContent = currentMode === "numbers" ? ui.titleNumbers : ui.titleTime;
+    if (hintEl) {
+      hintEl.textContent =
+        currentMode === "numbers"
+          ? currentRoundType === "numberToAudio"
+            ? ui.hintNumbersNumberToAudio
+            : ui.hintNumbersAudioToNumber
+          : ui.hintTime;
+    }
     if (repeatBtn) {
       repeatBtn.textContent = ui.repeat;
       repeatBtn.setAttribute("aria-label", ui.repeatAria);
@@ -413,10 +740,15 @@
       hintBtn.setAttribute("aria-label", ui.hintAria);
     }
     if (startHint) startHint.textContent = ui.startHint;
-    if (startBtn) startBtn.textContent = ui.start;
+    if (startBtn) startBtn.textContent = `▶️ ${ui.start}`;
 
     const langLabel = document.querySelector(".lang__label");
     if (langLabel) langLabel.textContent = currentLang === "de" ? "Sprache" : "Language";
+
+    if (btnModeTime) btnModeTime.textContent = ui.modeTime;
+    if (btnModeNumbers) btnModeNumbers.textContent = ui.modeNumbers;
+    if (btnModeStartTime) btnModeStartTime.textContent = `🕒 ${ui.modeTime}`;
+    if (btnModeStartNumbers) btnModeStartNumbers.textContent = `🔢 ${ui.modeNumbers}`;
   }
 
   function refreshHintUi() {
@@ -444,36 +776,98 @@
 
   function renderClock() {
     const wrap = document.querySelector(".clock-wrap");
-    if (!currentTarget) return;
+    if (!wrap) return;
+    if (currentMode !== "time" || !currentTarget) {
+      wrap.setAttribute("hidden", "");
+      return;
+    }
     if (currentRoundType === "reverse") {
       wrap?.setAttribute("hidden", "");
       refreshHintUi();
       return;
     }
     wrap?.removeAttribute("hidden");
-    drawHands(currentTarget);
+    drawHands(/** @type {ClockTime} */ (currentTarget));
     refreshHintUi();
+  }
+
+  function renderNumbers() {
+    const panel = document.getElementById("numbers-panel");
+    const valueEl = document.getElementById("numbers-value");
+    if (!panel || !valueEl) return;
+
+    const show =
+      currentMode === "numbers" && currentRoundType === "numberToAudio" && currentTarget != null;
+    if (!show) {
+      panel.setAttribute("hidden", "");
+      return;
+    }
+
+    panel.removeAttribute("hidden");
+    valueEl.textContent = String(/** @type {number} */ (currentTarget));
   }
 
   function renderChoices() {
     const root = document.getElementById("choices-root");
     if (!root || !currentTarget) return;
     root.replaceChildren();
-    root.classList.toggle("choices__grid--clocks", currentRoundType === "reverse");
+    clearChoiceSpeaking();
+    const isReverseTime = currentRoundType === "reverse";
+    const isNumbersRound = currentRoundType === "audioToNumber" || currentRoundType === "numberToAudio";
+    root.classList.toggle("choices__grid--clocks", isReverseTime);
+    root.classList.toggle("choices__grid--numbers", isNumbersRound);
+
+    if (currentRoundType === "audioToNumber") {
+      const ui = tUi();
+      currentOptions.forEach((n) => {
+        const value = /** @type {number} */ (n);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn--numberpick";
+        btn.textContent = String(value);
+        btn.setAttribute("aria-label", ui.chooseNumberAria(value));
+        btn.addEventListener("click", () => {
+          if (interactionLocked) return;
+          onPick(value, btn);
+        });
+        root.appendChild(btn);
+      });
+      return;
+    }
+
+    if (currentRoundType === "numberToAudio") {
+      const ui = tUi();
+      currentOptions.forEach((n) => {
+        const value = /** @type {number} */ (n);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn--audiopick";
+        btn.textContent = "\u{1F50A}";
+        btn.dataset.value = String(value);
+        btn.setAttribute("aria-label", ui.chooseSoundAria(numberToAria(value)));
+        btn.addEventListener("click", () => {
+          if (interactionLocked) return;
+          onPick(value, btn);
+        });
+        root.appendChild(btn);
+      });
+      return;
+    }
 
     if (currentRoundType === "reverse") {
       currentOptions.forEach((t) => {
+        const tt = /** @type {ClockTime} */ (t);
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn btn--clockpick";
-        btn.setAttribute("aria-label", tUi().chooseClockAria(ariaForTime(t)));
+        btn.setAttribute("aria-label", tUi().chooseClockAria(ariaForTime(tt)));
 
-        const svg = makeMiniClockSvg(t);
+        const svg = makeMiniClockSvg(tt);
         btn.appendChild(svg);
 
         btn.addEventListener("click", () => {
           if (interactionLocked) return;
-          onPick(t, btn);
+          onPick(tt, btn);
         });
 
         root.appendChild(btn);
@@ -482,29 +876,30 @@
     }
 
     currentOptions.forEach((t) => {
+      const tt = /** @type {ClockTime} */ (t);
       const row = document.createElement("div");
       row.className = "choice-row";
 
       const listenBtn = document.createElement("button");
       listenBtn.type = "button";
       listenBtn.className = "btn btn--listen";
-      listenBtn.setAttribute("aria-label", tUi().listenAria(phraseForTime(t)));
+      listenBtn.setAttribute("aria-label", tUi().listenAria(phraseForTime(tt)));
       listenBtn.textContent = "\u{1F50A}";
       listenBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         if (interactionLocked) return;
-        speak(phraseForTime(t), { rate: 0.88 });
+        speak(phraseForTime(tt), { rate: 0.88 });
       });
 
       const pickBtn = document.createElement("button");
       pickBtn.type = "button";
       pickBtn.className = "btn btn--pick";
-      pickBtn.setAttribute("aria-label", tUi().chooseAria(ariaForTime(t)));
-      pickBtn.innerHTML = `<span class="btn-pick__phrase">${phraseForTime(t)}</span> <span class="btn-pick__time" style="opacity:0.75;font-weight:600">(${displayShort(t)})</span>`;
+      pickBtn.setAttribute("aria-label", tUi().chooseAria(ariaForTime(tt)));
+      pickBtn.innerHTML = `<span class="btn-pick__phrase">${phraseForTime(tt)}</span> <span class="btn-pick__time" style="opacity:0.75;font-weight:600">(${displayShort(tt)})</span>`;
 
       pickBtn.addEventListener("click", () => {
         if (interactionLocked) return;
-        onPick(t, pickBtn);
+        onPick(tt, pickBtn);
       });
 
       row.appendChild(listenBtn);
@@ -613,18 +1008,28 @@
    */
   function onPick(picked, btn) {
     if (!currentTarget) return;
+    clearChoiceSpeaking();
     interactionLocked = true;
     const all = document.querySelectorAll(
-      "#choices-root .btn--pick, #choices-root .btn--listen, #choices-root .btn--clockpick"
+      "#choices-root .btn--pick, #choices-root .btn--listen, #choices-root .btn--clockpick, #choices-root .btn--numberpick, #choices-root .btn--audiopick"
     );
     all.forEach((b) => {
       b.disabled = true;
     });
 
-    speak(phraseForTime(picked), {
+    const pickedSpeech =
+      currentMode === "numbers"
+        ? numberToSpeech(/** @type {number} */ (picked))
+        : phraseForTime(/** @type {ClockTime} */ (picked));
+
+    speak(pickedSpeech, {
       rate: 0.88,
       onend: () => {
-        const correct = timeKey(picked) === timeKey(currentTarget);
+        const correct =
+          currentMode === "numbers"
+            ? /** @type {number} */ (picked) === /** @type {number} */ (currentTarget)
+            : timeKey(/** @type {ClockTime} */ (picked)) === timeKey(/** @type {ClockTime} */ (currentTarget));
+        bumpScore(currentMode, correct);
         if (correct) {
           const ui = tUi();
           setLive(ui.correctLive);
@@ -675,9 +1080,14 @@
     const overlay = document.getElementById("start-overlay");
     const app = document.getElementById("app");
     const btnStart = document.getElementById("btn-start");
+    const btnHome = document.getElementById("btn-home");
     const btnRepeat = document.getElementById("btn-repeat");
     const btnHint = document.getElementById("btn-hint");
     const langSelect = document.getElementById("lang");
+    const btnModeTime = document.getElementById("btn-mode-time");
+    const btnModeNumbers = document.getElementById("btn-mode-numbers");
+    const btnModeStartTime = document.getElementById("btn-mode-start-time");
+    const btnModeStartNumbers = document.getElementById("btn-mode-start-numbers");
 
     initSpeechVoices();
 
@@ -688,22 +1098,78 @@
     if (langSelect && "value" in langSelect) langSelect.value = currentLang;
     refreshUiText();
 
+    function setMode(next) {
+      currentMode = next === "numbers" ? "numbers" : "time";
+
+      const isTime = currentMode === "time";
+      if (btnModeTime) btnModeTime.setAttribute("aria-pressed", isTime ? "true" : "false");
+      if (btnModeNumbers) btnModeNumbers.setAttribute("aria-pressed", isTime ? "false" : "true");
+      if (btnModeStartTime) btnModeStartTime.setAttribute("aria-pressed", isTime ? "true" : "false");
+      if (btnModeStartNumbers) btnModeStartNumbers.setAttribute("aria-pressed", isTime ? "false" : "true");
+
+      refreshUiText();
+      refreshHintUi();
+      renderClock();
+      renderNumbers();
+      renderChoices();
+    }
+
+    // Default mode: time.
+    setMode("time");
+
+    function goToStartScreen() {
+      startSpeechSession();
+      setLive("");
+      interactionLocked = false;
+      hintShown = false;
+      currentTarget = null;
+      currentOptions = [];
+      resetScores();
+
+      overlay?.removeAttribute("hidden");
+      app?.setAttribute("hidden", "");
+      refreshUiText();
+      refreshHintUi();
+      renderClock();
+      renderNumbers();
+      renderChoices();
+      btnStart?.focus();
+    }
+
     langSelect?.addEventListener("change", () => {
       currentLang = langSelect.value === "de" ? "de" : "en";
       document.documentElement.lang = currentLang;
       refreshUiText();
+      renderNumbers();
       renderChoices();
       refreshHintUi();
       speakQuestion();
+    });
+
+    btnModeStartTime?.addEventListener("click", () => setMode("time"));
+    btnModeStartNumbers?.addEventListener("click", () => setMode("numbers"));
+    btnModeTime?.addEventListener("click", () => {
+      setMode("time");
+      if (overlay?.hasAttribute("hidden")) newRound();
+    });
+    btnModeNumbers?.addEventListener("click", () => {
+      setMode("numbers");
+      if (overlay?.hasAttribute("hidden")) newRound();
     });
 
     btnStart?.addEventListener("click", () => {
       overlay?.setAttribute("hidden", "");
       app?.removeAttribute("hidden");
       document.getElementById("btn-repeat")?.focus();
-      speak(tUi().look, {
+      renderScores();
+      const ui = tUi();
+      speak(currentMode === "numbers" ? ui.lookNumbers : ui.lookTime, {
         onend: () => newRound(),
       });
+    });
+
+    btnHome?.addEventListener("click", () => {
+      goToStartScreen();
     });
 
     btnRepeat?.addEventListener("click", () => {
@@ -717,6 +1183,9 @@
       hintShown = !hintShown;
       refreshHintUi();
     });
+
+    // Initial render (start screen).
+    renderScores();
   }
 
   if (document.readyState === "loading") {
