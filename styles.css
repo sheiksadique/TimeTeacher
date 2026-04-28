@@ -447,6 +447,12 @@ body {
   gap: 12px;
 }
 
+.choices__grid--letters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .btn--numberpick {
   min-height: 96px;
   background: var(--surface);
@@ -458,6 +464,20 @@ body {
 }
 
 .btn--numberpick:hover {
+  border-color: var(--primary);
+}
+
+.btn--letterpick {
+  min-height: 96px;
+  background: var(--surface);
+  border: 3px solid var(--clock-border);
+  color: var(--text);
+  font-weight: 900;
+  font-size: clamp(2.25rem, 7.5vw, 3rem);
+  box-shadow: 0 2px 8px rgba(26, 21, 35, 0.06);
+}
+
+.btn--letterpick:hover {
   border-color: var(--primary);
 }
 

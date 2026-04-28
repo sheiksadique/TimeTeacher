@@ -13,12 +13,92 @@
   /** @type {"en" | "de"} */
   let currentLang = "en";
 
-  /** @type {"time" | "numbers"} */
+  /** @type {"time" | "numbers" | "letters"} */
   let currentMode = "time";
 
   // ——— Numbers (11–99) ———
 
   const NUMBER_POOL = Array.from({ length: 99 - 11 + 1 }, (_, i) => i + 11);
+
+  // ——— Letters (A–Z + German extras; capitals + small) ———
+
+  const LETTERS_BASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const LETTERS_DE_EXTRAS = ["Ä", "Ö", "Ü", "ẞ", "ß"];
+
+  function letterPoolForLang() {
+    const base = [...LETTERS_BASE, ...LETTERS_BASE.map((x) => x.toLowerCase())];
+    if (currentLang !== "de") return base;
+    const extras = [...LETTERS_DE_EXTRAS, ...LETTERS_DE_EXTRAS.map((x) => x.toLowerCase())];
+    return [...base, ...extras].filter((x, i, a) => a.indexOf(x) === i);
+  }
+
+  /** @param {string} ch */
+  function isUpper(ch) {
+    return ch === ch.toUpperCase() && ch !== ch.toLowerCase();
+  }
+
+  /** @param {string} ch */
+  function isLower(ch) {
+    return ch === ch.toLowerCase() && ch !== ch.toUpperCase();
+  }
+
+  /** @param {string} ch */
+  function swapCase(ch) {
+    if (ch === "ß") return "ẞ";
+    if (ch === "ẞ") return "ß";
+    if (isUpper(ch)) return ch.toLowerCase();
+    if (isLower(ch)) return ch.toUpperCase();
+    return ch;
+  }
+
+  /** @param {string} ch */
+  function letterBaseNameEn(ch) {
+    const up = ch.toUpperCase();
+    if (up === "Ä") return "A umlaut";
+    if (up === "Ö") return "O umlaut";
+    if (up === "Ü") return "U umlaut";
+    if (up === "ẞ") return "sharp s";
+    if (up === "SS") return "S S";
+    return up;
+  }
+
+  /** @param {string} ch */
+  function letterBaseNameDe(ch) {
+    const up = ch.toUpperCase();
+    if (up === "Ä") return "Ä";
+    if (up === "Ö") return "Ö";
+    if (up === "Ü") return "Ü";
+    if (up === "ẞ") return "Eszett";
+    return up;
+  }
+
+  /**
+   * Returns a speech phrase that includes case ("capital"/"small") when it helps.
+   * @param {string} ch
+   */
+  function letterToSpeech(ch) {
+    const upper = isUpper(ch) || ch === "ẞ";
+    const lower = isLower(ch) || ch === "ß";
+    if (currentLang === "de") {
+      const base = letterBaseNameDe(ch);
+      if (ch === "ß") return "Eszett";
+      if (ch === "ẞ") return "großes Eszett";
+      if (upper) return `großes ${base}`;
+      if (lower) return `kleines ${base.toUpperCase()}`;
+      return base;
+    }
+    const base = letterBaseNameEn(ch);
+    if (ch === "ß") return "sharp s";
+    if (ch === "ẞ") return "capital sharp s";
+    if (upper) return `capital ${base}`;
+    if (lower) return `lowercase ${letterBaseNameEn(ch.toUpperCase())}`;
+    return base;
+  }
+
+  /** @param {string} ch */
+  function letterToAria(ch) {
+    return letterToSpeech(ch);
+  }
 
   /** @param {number} n */
   function numberToSpeechEn(n) {
@@ -396,13 +476,13 @@
 
   // ——— Quiz ———
 
-  /** @type {ClockTime | number | null} */
+  /** @type {ClockTime | number | string | null} */
   let currentTarget = null;
 
-  /** @type {"normal" | "reverse" | "audioToNumber" | "numberToAudio"} */
+  /** @type {"normal" | "reverse" | "audioToNumber" | "numberToAudio" | "audioToLetter" | "letterToAudio"} */
   let currentRoundType = "normal";
 
-  /** @type {Array<ClockTime | number>} */
+  /** @type {Array<ClockTime | number | string>} */
   let currentOptions = [];
 
   let interactionLocked = false;
@@ -414,6 +494,7 @@
   const scoreByMode = {
     time: { correct: 0, wrong: 0 },
     numbers: { correct: 0, wrong: 0 },
+    letters: { correct: 0, wrong: 0 },
   };
 
   function resetScores() {
@@ -421,11 +502,13 @@
     scoreByMode.time.wrong = 0;
     scoreByMode.numbers.correct = 0;
     scoreByMode.numbers.wrong = 0;
+    scoreByMode.letters.correct = 0;
+    scoreByMode.letters.wrong = 0;
     renderScores();
   }
 
   /**
-   * @param {"time" | "numbers"} mode
+   * @param {"time" | "numbers" | "letters"} mode
    * @param {boolean} isCorrect
    */
   function bumpScore(mode, isCorrect) {
@@ -439,7 +522,7 @@
     if (!host) return;
     host.replaceChildren();
 
-    /** @param {"time" | "numbers"} mode */
+    /** @param {"time" | "numbers" | "letters"} mode */
     const add = (mode) => {
       const s = scoreByMode[mode];
       const total = s.correct + s.wrong;
@@ -453,12 +536,12 @@
       if (total === 0) card.setAttribute("aria-disabled", "true");
       card.setAttribute(
         "aria-label",
-        `${mode === "time" ? "Time" : "Numbers"} score: ${s.correct} correct, ${s.wrong} wrong`
+        `${mode === "time" ? "Time" : mode === "numbers" ? "Numbers" : "Letters"} score: ${s.correct} correct, ${s.wrong} wrong`
       );
 
       const label = document.createElement("span");
       label.className = "scorecard__label";
-      label.textContent = mode === "time" ? "🕒" : "🔢";
+      label.textContent = mode === "time" ? "🕒" : mode === "numbers" ? "🔢" : "🔤";
 
       const gauge = document.createElement("div");
       gauge.className = "scoregauge";
@@ -483,6 +566,7 @@
     // Show both mode sessions; they’ll “wake up” once used.
     add("time");
     add("numbers");
+    add("letters");
   }
 
   function shuffle(a) {
@@ -539,6 +623,48 @@
     return out.slice(0, 3);
   }
 
+  /** @param {string} target */
+  function pickLetterDistractors(target) {
+    const poolByLang = letterPoolForLang();
+    /** @type {string[]} */
+    const out = [];
+    const add = (x) => {
+      if (!x) return;
+      if (x === target) return;
+      if (out.includes(x)) return;
+      out.push(x);
+    };
+
+    // Prefer testing case confusion
+    add(swapCase(target));
+
+    // Prefer same-case distractors (kids often mix shape/case)
+    const wantUpper = isUpper(target) || target === "ẞ";
+    const wantLower = isLower(target) || target === "ß";
+    const sameCasePool = poolByLang.filter((x) => {
+      if (wantUpper) return isUpper(x) || x === "ẞ";
+      if (wantLower) return isLower(x) || x === "ß";
+      return true;
+    });
+
+    const pool = shuffle(sameCasePool.filter((x) => x !== target));
+    for (const x of pool) {
+      if (out.length >= 3) break;
+      add(x);
+    }
+
+    // Fill from whole pool if needed
+    if (out.length < 3) {
+      const rest = shuffle(poolByLang.filter((x) => x !== target));
+      for (const x of rest) {
+        if (out.length >= 3) break;
+        add(x);
+      }
+    }
+
+    return out.slice(0, 3);
+  }
+
   function newRound() {
     setLive("");
     hintShown = false;
@@ -548,6 +674,13 @@
       currentTarget = target;
       currentRoundType = Math.random() < 0.5 ? "audioToNumber" : "numberToAudio";
       const wrong = pickNumberDistractors(target);
+      currentOptions = shuffle([target, ...wrong]);
+    } else if (currentMode === "letters") {
+      const poolByLang = letterPoolForLang();
+      const target = poolByLang[Math.floor(Math.random() * poolByLang.length)];
+      currentTarget = target;
+      currentRoundType = Math.random() < 0.5 ? "audioToLetter" : "letterToAudio";
+      const wrong = pickLetterDistractors(target);
       currentOptions = shuffle([target, ...wrong]);
     } else {
       const target = TIME_POOL[Math.floor(Math.random() * TIME_POOL.length)];
@@ -559,6 +692,7 @@
 
     renderClock();
     renderNumbers();
+    renderLetters();
     renderChoices();
     interactionLocked = true;
     requestAnimationFrame(() => {
@@ -630,6 +764,21 @@
       return;
     }
 
+    if (currentRoundType === "audioToLetter") {
+      const ch = /** @type {string} */ (currentTarget);
+      speak(letterToSpeech(ch), { onend: () => {} });
+      return;
+    }
+
+    if (currentRoundType === "letterToAudio") {
+      const sessionId = startSpeechSession();
+      clearChoiceSpeaking();
+      speakInSession(sessionId, ui.lettersLetterToAudioPrompt, {
+        onend: () => autoReadLetterToAudioChoices(sessionId),
+      });
+      return;
+    }
+
     if (currentRoundType === "reverse") {
       const ui = tUi();
       const phrase = phraseForTime(/** @type {ClockTime} */ (currentTarget));
@@ -650,9 +799,12 @@
       ? {
           titleTime: "Wie spät ist es?",
           titleNumbers: "Zahlen",
+          titleLetters: "Buchstaben",
           hintTime: "Hör zu und tippe die richtige Antwort.",
           hintNumbersAudioToNumber: "Hör zu und tippe die richtige Zahl.",
           hintNumbersNumberToAudio: "Schau hin und tippe den richtigen Klang.",
+          hintLettersAudioToLetter: "Hör zu und tippe den richtigen Buchstaben.",
+          hintLettersLetterToAudio: "Schau hin und tippe den richtigen Klang.",
           repeat: "Nochmal sagen",
           repeatAria: "Frage nochmal sagen",
           hintBtn: "Tipp",
@@ -660,13 +812,17 @@
           reversePrompt: "Finde die Uhr für",
           numbersAudioToNumberPrompt: "Welche Zahl hast du gehört?",
           numbersNumberToAudioPrompt: "Welcher Klang passt zu dieser Zahl?",
+          lettersAudioToLetterPrompt: "Welchen Buchstaben hast du gehört?",
+          lettersLetterToAudioPrompt: "Welcher Klang passt zu diesem Buchstaben?",
           modeTime: "Zeit",
           modeNumbers: "Zahlen",
+          modeLetters: "Buchstaben",
           listenAria: (p) => `Anhören: ${p}`,
           chooseAria: (p) => `Wähle ${p}`,
           chooseClockAria: (p) => `Wähle die Uhr: ${p}`,
           chooseNumberAria: (n) => `Wähle ${n}`,
           chooseSoundAria: (p) => `Wähle den Klang: ${p}`,
+          chooseLetterAria: (c) => `Wähle ${c}`,
           correctLive: "Richtig!",
           tryAgainLive: "Nochmal versuchen.",
           notQuite: "Nicht ganz. Versuch eine andere Antwort.",
@@ -675,14 +831,18 @@
           startHint: "Tippe Start — dann hörst du die Fragen (Audio braucht oft einen Tipp).",
           lookTime: "Schau auf die Uhr!",
           lookNumbers: "Los geht's mit Zahlen!",
+          lookLetters: "Los geht's mit Buchstaben!",
           praises: ["Ja! Genau!", "Super!", "Toll gemacht!", "Richtig!"],
         }
       : {
           titleTime: "What time is it?",
           titleNumbers: "Numbers",
+          titleLetters: "Letters",
           hintTime: "Listen, then tap the right answer.",
           hintNumbersAudioToNumber: "Listen, then tap the right number.",
           hintNumbersNumberToAudio: "Look, then tap the right sound.",
+          hintLettersAudioToLetter: "Listen, then tap the right letter.",
+          hintLettersLetterToAudio: "Look, then tap the right sound.",
           repeat: "Say it again",
           repeatAria: "Say the question again",
           hintBtn: "Hint",
@@ -690,13 +850,17 @@
           reversePrompt: "Find the clock for",
           numbersAudioToNumberPrompt: "Which number did you hear?",
           numbersNumberToAudioPrompt: "Which sound matches this number?",
+          lettersAudioToLetterPrompt: "Which letter did you hear?",
+          lettersLetterToAudioPrompt: "Which sound matches this letter?",
           modeTime: "Time",
           modeNumbers: "Numbers",
+          modeLetters: "Letters",
           listenAria: (p) => `Listen: ${p}`,
           chooseAria: (p) => `Choose ${p}`,
           chooseClockAria: (p) => `Choose the clock: ${p}`,
           chooseNumberAria: (n) => `Choose ${n}`,
           chooseSoundAria: (p) => `Choose the sound: ${p}`,
+          chooseLetterAria: (c) => `Choose ${c}`,
           correctLive: "Correct!",
           tryAgainLive: "Try again.",
           notQuite: "Not quite. Try another answer.",
@@ -705,6 +869,7 @@
           startHint: "Tap Start — then you will hear the questions (works best after a tap).",
           lookTime: "Let's look at the clock!",
           lookNumbers: "Let's do numbers!",
+          lookLetters: "Let's do letters!",
           praises: ["Yes! That's right!", "Great job!", "You got it!", "Super!"],
         };
   }
@@ -719,17 +884,25 @@
     const startBtn = document.getElementById("btn-start");
     const btnModeTime = document.getElementById("btn-mode-time");
     const btnModeNumbers = document.getElementById("btn-mode-numbers");
+    const btnModeLetters = document.getElementById("btn-mode-letters");
     const btnModeStartTime = document.getElementById("btn-mode-start-time");
     const btnModeStartNumbers = document.getElementById("btn-mode-start-numbers");
+    const btnModeStartLetters = document.getElementById("btn-mode-start-letters");
 
-    if (titleEl) titleEl.textContent = currentMode === "numbers" ? ui.titleNumbers : ui.titleTime;
+    if (titleEl)
+      titleEl.textContent =
+        currentMode === "numbers" ? ui.titleNumbers : currentMode === "letters" ? ui.titleLetters : ui.titleTime;
     if (hintEl) {
       hintEl.textContent =
         currentMode === "numbers"
           ? currentRoundType === "numberToAudio"
             ? ui.hintNumbersNumberToAudio
             : ui.hintNumbersAudioToNumber
-          : ui.hintTime;
+          : currentMode === "letters"
+            ? currentRoundType === "letterToAudio"
+              ? ui.hintLettersLetterToAudio
+              : ui.hintLettersAudioToLetter
+            : ui.hintTime;
     }
     if (repeatBtn) {
       repeatBtn.textContent = ui.repeat;
@@ -747,8 +920,10 @@
 
     if (btnModeTime) btnModeTime.textContent = ui.modeTime;
     if (btnModeNumbers) btnModeNumbers.textContent = ui.modeNumbers;
+    if (btnModeLetters) btnModeLetters.textContent = ui.modeLetters;
     if (btnModeStartTime) btnModeStartTime.textContent = `🕒 ${ui.modeTime}`;
     if (btnModeStartNumbers) btnModeStartNumbers.textContent = `🔢 ${ui.modeNumbers}`;
+    if (btnModeStartLetters) btnModeStartLetters.textContent = `🔤 ${ui.modeLetters}`;
   }
 
   function refreshHintUi() {
@@ -807,6 +982,21 @@
     valueEl.textContent = String(/** @type {number} */ (currentTarget));
   }
 
+  function renderLetters() {
+    const panel = document.getElementById("letters-panel");
+    const valueEl = document.getElementById("letters-value");
+    if (!panel || !valueEl) return;
+
+    const show = currentMode === "letters" && currentRoundType === "letterToAudio" && currentTarget != null;
+    if (!show) {
+      panel.setAttribute("hidden", "");
+      return;
+    }
+
+    panel.removeAttribute("hidden");
+    valueEl.textContent = String(/** @type {string} */ (currentTarget));
+  }
+
   function renderChoices() {
     const root = document.getElementById("choices-root");
     if (!root || !currentTarget) return;
@@ -814,8 +1004,10 @@
     clearChoiceSpeaking();
     const isReverseTime = currentRoundType === "reverse";
     const isNumbersRound = currentRoundType === "audioToNumber" || currentRoundType === "numberToAudio";
+    const isLettersRound = currentRoundType === "audioToLetter" || currentRoundType === "letterToAudio";
     root.classList.toggle("choices__grid--clocks", isReverseTime);
     root.classList.toggle("choices__grid--numbers", isNumbersRound);
+    root.classList.toggle("choices__grid--letters", isLettersRound);
 
     if (currentRoundType === "audioToNumber") {
       const ui = tUi();
@@ -845,6 +1037,43 @@
         btn.textContent = "\u{1F50A}";
         btn.dataset.value = String(value);
         btn.setAttribute("aria-label", ui.chooseSoundAria(numberToAria(value)));
+        btn.addEventListener("click", () => {
+          if (interactionLocked) return;
+          onPick(value, btn);
+        });
+        root.appendChild(btn);
+      });
+      return;
+    }
+
+    if (currentRoundType === "audioToLetter") {
+      const ui = tUi();
+      currentOptions.forEach((c) => {
+        const value = /** @type {string} */ (c);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn--letterpick";
+        btn.textContent = String(value);
+        btn.setAttribute("aria-label", ui.chooseLetterAria(value));
+        btn.addEventListener("click", () => {
+          if (interactionLocked) return;
+          onPick(value, btn);
+        });
+        root.appendChild(btn);
+      });
+      return;
+    }
+
+    if (currentRoundType === "letterToAudio") {
+      const ui = tUi();
+      currentOptions.forEach((c) => {
+        const value = /** @type {string} */ (c);
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn--audiopick";
+        btn.textContent = "\u{1F50A}";
+        btn.dataset.value = String(value);
+        btn.setAttribute("aria-label", ui.chooseSoundAria(letterToAria(value)));
         btn.addEventListener("click", () => {
           if (interactionLocked) return;
           onPick(value, btn);
@@ -1011,7 +1240,7 @@
     clearChoiceSpeaking();
     interactionLocked = true;
     const all = document.querySelectorAll(
-      "#choices-root .btn--pick, #choices-root .btn--listen, #choices-root .btn--clockpick, #choices-root .btn--numberpick, #choices-root .btn--audiopick"
+      "#choices-root .btn--pick, #choices-root .btn--listen, #choices-root .btn--clockpick, #choices-root .btn--numberpick, #choices-root .btn--letterpick, #choices-root .btn--audiopick"
     );
     all.forEach((b) => {
       b.disabled = true;
@@ -1020,7 +1249,9 @@
     const pickedSpeech =
       currentMode === "numbers"
         ? numberToSpeech(/** @type {number} */ (picked))
-        : phraseForTime(/** @type {ClockTime} */ (picked));
+        : currentMode === "letters"
+          ? letterToSpeech(/** @type {string} */ (picked))
+          : phraseForTime(/** @type {ClockTime} */ (picked));
 
     speak(pickedSpeech, {
       rate: 0.88,
@@ -1028,7 +1259,9 @@
         const correct =
           currentMode === "numbers"
             ? /** @type {number} */ (picked) === /** @type {number} */ (currentTarget)
-            : timeKey(/** @type {ClockTime} */ (picked)) === timeKey(/** @type {ClockTime} */ (currentTarget));
+            : currentMode === "letters"
+              ? /** @type {string} */ (picked) === /** @type {string} */ (currentTarget)
+              : timeKey(/** @type {ClockTime} */ (picked)) === timeKey(/** @type {ClockTime} */ (currentTarget));
         bumpScore(currentMode, correct);
         if (correct) {
           const ui = tUi();
@@ -1071,6 +1304,42 @@
     });
   }
 
+  /**
+   * In Letters → "letterToAudio" rounds, automatically read out each choice
+   * while briefly highlighting the corresponding 🔊 button.
+   * @param {number} sessionId
+   */
+  function autoReadLetterToAudioChoices(sessionId) {
+    if (sessionId !== speakSeq) return;
+    if (currentRoundType !== "letterToAudio") return;
+
+    const btns = Array.from(document.querySelectorAll("#choices-root .btn--audiopick"));
+    if (!btns.length) return;
+
+    const values = btns.map((b) => String(b.dataset.value || ""));
+    let i = 0;
+
+    const next = () => {
+      if (sessionId !== speakSeq) return clearChoiceSpeaking();
+      clearChoiceSpeaking();
+      const btn = btns[i];
+      const value = values[i];
+      if (btn && value) btn.classList.add("is-speaking");
+      speakInSession(sessionId, letterToSpeech(value), {
+        rate: 0.88,
+        onend: () => {
+          if (sessionId !== speakSeq) return clearChoiceSpeaking();
+          if (btn) btn.classList.remove("is-speaking");
+          i++;
+          if (i >= btns.length) return;
+          setTimeout(next, 160);
+        },
+      });
+    };
+
+    next();
+  }
+
   // ——— Start / DOM ———
 
   function init() {
@@ -1086,8 +1355,10 @@
     const langSelect = document.getElementById("lang");
     const btnModeTime = document.getElementById("btn-mode-time");
     const btnModeNumbers = document.getElementById("btn-mode-numbers");
+    const btnModeLetters = document.getElementById("btn-mode-letters");
     const btnModeStartTime = document.getElementById("btn-mode-start-time");
     const btnModeStartNumbers = document.getElementById("btn-mode-start-numbers");
+    const btnModeStartLetters = document.getElementById("btn-mode-start-letters");
 
     initSpeechVoices();
 
@@ -1099,18 +1370,23 @@
     refreshUiText();
 
     function setMode(next) {
-      currentMode = next === "numbers" ? "numbers" : "time";
+      currentMode = next === "numbers" ? "numbers" : next === "letters" ? "letters" : "time";
 
       const isTime = currentMode === "time";
+      const isNumbers = currentMode === "numbers";
+      const isLetters = currentMode === "letters";
       if (btnModeTime) btnModeTime.setAttribute("aria-pressed", isTime ? "true" : "false");
-      if (btnModeNumbers) btnModeNumbers.setAttribute("aria-pressed", isTime ? "false" : "true");
+      if (btnModeNumbers) btnModeNumbers.setAttribute("aria-pressed", isNumbers ? "true" : "false");
+      if (btnModeLetters) btnModeLetters.setAttribute("aria-pressed", isLetters ? "true" : "false");
       if (btnModeStartTime) btnModeStartTime.setAttribute("aria-pressed", isTime ? "true" : "false");
-      if (btnModeStartNumbers) btnModeStartNumbers.setAttribute("aria-pressed", isTime ? "false" : "true");
+      if (btnModeStartNumbers) btnModeStartNumbers.setAttribute("aria-pressed", isNumbers ? "true" : "false");
+      if (btnModeStartLetters) btnModeStartLetters.setAttribute("aria-pressed", isLetters ? "true" : "false");
 
       refreshUiText();
       refreshHintUi();
       renderClock();
       renderNumbers();
+      renderLetters();
       renderChoices();
     }
 
@@ -1132,6 +1408,7 @@
       refreshHintUi();
       renderClock();
       renderNumbers();
+      renderLetters();
       renderChoices();
       btnStart?.focus();
     }
@@ -1141,19 +1418,26 @@
       document.documentElement.lang = currentLang;
       refreshUiText();
       renderNumbers();
+      renderLetters();
       renderChoices();
       refreshHintUi();
-      speakQuestion();
+      if (currentMode === "letters") newRound();
+      else speakQuestion();
     });
 
     btnModeStartTime?.addEventListener("click", () => setMode("time"));
     btnModeStartNumbers?.addEventListener("click", () => setMode("numbers"));
+    btnModeStartLetters?.addEventListener("click", () => setMode("letters"));
     btnModeTime?.addEventListener("click", () => {
       setMode("time");
       if (overlay?.hasAttribute("hidden")) newRound();
     });
     btnModeNumbers?.addEventListener("click", () => {
       setMode("numbers");
+      if (overlay?.hasAttribute("hidden")) newRound();
+    });
+    btnModeLetters?.addEventListener("click", () => {
+      setMode("letters");
       if (overlay?.hasAttribute("hidden")) newRound();
     });
 
@@ -1163,7 +1447,7 @@
       document.getElementById("btn-repeat")?.focus();
       renderScores();
       const ui = tUi();
-      speak(currentMode === "numbers" ? ui.lookNumbers : ui.lookTime, {
+      speak(currentMode === "numbers" ? ui.lookNumbers : currentMode === "letters" ? ui.lookLetters : ui.lookTime, {
         onend: () => newRound(),
       });
     });

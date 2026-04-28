@@ -19,6 +19,9 @@
           <button type="button" class="btn segmented__btn" id="btn-mode-start-numbers" aria-pressed="false">
             🔢 Numbers
           </button>
+          <button type="button" class="btn segmented__btn" id="btn-mode-start-letters" aria-pressed="false">
+            🔤 Letters
+          </button>
         </div>
         <button type="button" class="btn btn--primary btn--xl" id="btn-start">▶️ Start</button>
       </div>
@@ -35,6 +38,9 @@
             <button type="button" class="btn segmented__btn" id="btn-mode-time" aria-pressed="true">Time</button>
             <button type="button" class="btn segmented__btn" id="btn-mode-numbers" aria-pressed="false">
               Numbers
+            </button>
+            <button type="button" class="btn segmented__btn" id="btn-mode-letters" aria-pressed="false">
+              Letters
             </button>
           </div>
           <div id="session-scores" class="session-scores" aria-label="Score"></div>
@@ -72,6 +78,10 @@
 
       <section class="numbers" id="numbers-panel" hidden aria-label="Number prompt">
         <div class="numbers__value" id="numbers-value" aria-hidden="true">42</div>
+      </section>
+
+      <section class="numbers" id="letters-panel" hidden aria-label="Letter prompt">
+        <div class="numbers__value" id="letters-value" aria-hidden="true">A</div>
       </section>
 
       <section class="choices" aria-label="Answer choices">
