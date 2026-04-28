@@ -1,0 +1,352 @@
+/* TimeTeacher — simple, touch-friendly, high contrast */
+
+:root {
+  --bg: #f7f5ff;
+  --surface: #ffffff;
+  --text: #1a1523;
+  --muted: #5c5466;
+  --primary: #5b4fd4;
+  --primary-hover: #4840b8;
+  --success: #0d8a5b;
+  --danger: #c53b3b;
+  --clock-face: #fffdf8;
+  --clock-border: #2d2640;
+  --tick-major: #2d2640;
+  --tick-minor: #b8b0c4;
+  --hand-hour: #2d2640;
+  --hand-minute: #5b4fd4;
+  --shadow: 0 8px 24px rgba(26, 21, 35, 0.12);
+  --radius: 16px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font);
+  font-size: 1.125rem;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Start overlay */
+.start-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(26, 21, 35, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.start-overlay[hidden] {
+  display: none;
+}
+
+.start-card {
+  max-width: 400px;
+  padding: 32px 28px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.start-card h1 {
+  margin: 0 0 12px;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.start-hint {
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* App layout */
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 20px 20px 32px;
+}
+
+.app__header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.app__title {
+  margin: 0;
+  font-size: clamp(1.35rem, 4vw, 1.65rem);
+  font-weight: 800;
+  text-align: center;
+}
+
+.app__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Language picker */
+.lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 2px solid rgba(45, 38, 64, 0.14);
+}
+
+.lang__label {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.lang__select {
+  font: inherit;
+  font-weight: 800;
+  border: 2px solid rgba(91, 79, 212, 0.35);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Buttons */
+.btn {
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 12px 18px;
+  min-height: 48px;
+  transition: background 0.15s ease, transform 0.08s ease, border-color 0.15s ease;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn--primary {
+  color: #fff;
+  background: var(--primary);
+}
+
+.btn--primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn--ghost {
+  color: var(--primary);
+  background: transparent;
+  border-color: rgba(91, 79, 212, 0.35);
+}
+
+.btn--ghost:hover {
+  background: rgba(91, 79, 212, 0.08);
+}
+
+.btn--xl {
+  font-size: 1.25rem;
+  padding: 16px 28px;
+  min-height: 56px;
+  border-radius: 14px;
+}
+
+.btn--listen {
+  flex: 0 0 auto;
+  min-width: 52px;
+  min-height: 56px;
+  padding: 0 14px;
+  font-size: 1.35rem;
+  line-height: 1;
+  background: var(--surface);
+  border: 3px solid var(--primary);
+  color: var(--primary);
+}
+
+.btn--listen:hover {
+  background: rgba(91, 79, 212, 0.1);
+}
+
+.btn--pick {
+  flex: 1;
+  min-height: 56px;
+  text-align: left;
+  font-size: 1.2rem;
+  background: var(--surface);
+  border: 3px solid var(--clock-border);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(26, 21, 35, 0.06);
+}
+
+.btn--pick:hover {
+  border-color: var(--primary);
+}
+
+.btn-pick__phrase {
+  display: block;
+}
+
+.btn-pick__time {
+  display: block;
+  font-size: 0.95rem;
+  margin-top: 4px;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Clock */
+.clock-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 20px;
+}
+
+.clock {
+  max-width: min(92vw, 320px);
+  height: auto;
+  filter: drop-shadow(0 6px 16px rgba(26, 21, 35, 0.1));
+}
+
+.clock__face {
+  fill: var(--clock-face);
+  stroke: var(--clock-border);
+  stroke-width: 4;
+}
+
+.clock__numbers text {
+  fill: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* Hands: geometry in JS (line + stroke); explicit paint avoids SVG/CSS quirks in some browsers */
+.clock__hand--hour line {
+  fill: none;
+}
+
+.clock__hand--minute line {
+  fill: none;
+}
+
+.clock__cap {
+  fill: var(--clock-border);
+}
+
+/* Choices */
+.choices__hint {
+  text-align: center;
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.choices__hint--hint {
+  margin-top: -10px;
+  margin-bottom: 16px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.choices__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.choices__grid--clocks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.btn--clockpick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 150px;
+  background: var(--surface);
+  border: 3px solid var(--clock-border);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(26, 21, 35, 0.06);
+}
+
+.btn--clockpick:hover {
+  border-color: var(--primary);
+}
+
+.mini-clock {
+  width: min(42vw, 170px);
+  height: auto;
+  filter: drop-shadow(0 4px 10px rgba(26, 21, 35, 0.1));
+}
+
+.mini-clock__face {
+  fill: var(--clock-face);
+  stroke: var(--clock-border);
+  stroke-width: 4;
+}
+
+.mini-clock__numbers text {
+  fill: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.choice-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+@media (min-width: 400px) {
+  .choice-row {
+    gap: 12px;
+  }
+}

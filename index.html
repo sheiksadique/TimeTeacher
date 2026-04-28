@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Learn to read a clock — hours and half hours" />
+    <title>TimeTeacher</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="start-overlay" class="start-overlay" role="dialog" aria-labelledby="start-title">
+      <div class="start-card">
+        <h1 id="start-title">TimeTeacher</h1>
+        <p class="start-hint">Tap Start — then you will hear the questions (works best after a tap).</p>
+        <button type="button" class="btn btn--primary btn--xl" id="btn-start">Start</button>
+      </div>
+    </div>
+
+    <main class="app" id="app" hidden>
+      <header class="app__header">
+        <h1 class="app__title">What time is it?</h1>
+        <div class="app__actions">
+          <label class="lang" for="lang" aria-label="Language">
+            <span class="lang__label">Language</span>
+            <select id="lang" class="lang__select">
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </label>
+          <button type="button" class="btn btn--ghost" id="btn-repeat" aria-label="Say the question again">Say it again</button>
+          <button type="button" class="btn btn--ghost" id="btn-hint" aria-label="Show a hint" hidden>Hint</button>
+        </div>
+      </header>
+
+      <div class="clock-wrap" aria-hidden="true">
+        <svg class="clock" viewBox="0 0 200 200" width="280" height="280">
+          <defs>
+            <!-- Arrow tips are drawn as polygons in JS (more reliable than SVG markers). -->
+          </defs>
+          <circle class="clock__face" cx="100" cy="100" r="92" />
+          <g id="clock-ticks"></g>
+          <g id="clock-numbers" class="clock__numbers" aria-hidden="true"></g>
+          <g id="hand-minute" class="clock__hand clock__hand--minute"></g>
+          <g id="hand-hour" class="clock__hand clock__hand--hour"></g>
+          <circle class="clock__cap" cx="100" cy="100" r="4" />
+        </svg>
+      </div>
+
+      <section class="choices" aria-label="Answer choices">
+        <p class="choices__hint" id="choices-hint">Listen, then tap the right answer.</p>
+        <p class="choices__hint choices__hint--hint" id="hint-text" hidden></p>
+        <div class="choices__grid" id="choices-root"></div>
+      </section>
+
+      <p class="sr-only" id="live-region" aria-live="polite"></p>
+    </main>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
