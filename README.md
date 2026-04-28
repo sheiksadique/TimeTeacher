@@ -8,17 +8,8 @@ It supports **two quiz types** (mixed randomly):
 
 ## Screenshots
 
-Add one screenshot for each mode:
-
-- `screenshots/normal.png`
-- `screenshots/reverse.png`
-
-Then (optionally) uncomment these lines to show them on GitHub:
-
-<!--
 ![Normal question](screenshots/normal.png)
 ![Reverse question](screenshots/reverse.png)
--->
 
 ## How to run
 
