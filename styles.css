@@ -103,6 +103,26 @@ body {
   flex-direction: column;
 }
 
+/* The quiz area must be allowed to shrink within the fixed viewport. */
+.clock-wrap,
+.numbers,
+.choices {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.choices {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.choices__grid {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .app__header {
   display: flex;
   flex-direction: column;
@@ -450,6 +470,13 @@ body {
     padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
   }
 
+  /* Prioritize the learning UI over settings on small screens. */
+  .session-scores,
+  .lang,
+  .segmented {
+    display: none;
+  }
+
   .app__actions {
     gap: 8px;
   }
@@ -459,7 +486,7 @@ body {
   }
 
   .clock {
-    max-width: min(82vw, 260px);
+    max-width: min(78vw, 220px);
   }
 
   .choices__hint {
