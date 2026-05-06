@@ -33,13 +33,13 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  height: 100svh;
   font-family: var(--font);
   font-size: 1.125rem;
   line-height: 1.45;
   color: var(--text);
   background: var(--bg);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .sr-only {
@@ -97,30 +97,7 @@ body {
 .app {
   max-width: 520px;
   margin: 0 auto;
-  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
-  height: 100svh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* The quiz area must be allowed to shrink within the fixed viewport. */
-.clock-wrap,
-.numbers,
-.choices {
-  flex: 0 0 auto;
-  min-height: 0;
-}
-
-.choices {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.choices__grid {
-  flex: 1 1 auto;
-  min-height: 0;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
 }
 
 .app__header {
@@ -642,5 +619,50 @@ body {
 @media (min-width: 400px) {
   .choice-row {
     gap: 12px;
+  }
+}
+
+/* Mobile compactness: slimmer choices + smaller clock, allow scrolling if needed. */
+@media (max-width: 420px) {
+  .clock {
+    max-width: min(84vw, 240px);
+  }
+
+  /* Make "Time" choices slimmer and single-line. */
+  .btn--pick {
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: 1.05rem;
+    line-height: 1.2;
+  }
+
+  .btn-pick__phrase {
+    display: inline;
+    white-space: nowrap;
+  }
+
+  .btn-pick__time {
+    display: inline;
+    margin-top: 0;
+    margin-left: 8px;
+    white-space: nowrap;
+  }
+
+  .btn--listen {
+    min-height: 48px;
+  }
+
+  /* Compact 2x2 grids (numbers/letters/reverse clocks) */
+  .btn--numberpick,
+  .btn--letterpick {
+    min-height: 72px;
+  }
+
+  .btn--clockpick {
+    min-height: 118px;
+  }
+
+  .mini-clock {
+    width: min(40vw, 140px);
   }
 }
