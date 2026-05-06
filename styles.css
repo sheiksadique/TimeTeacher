@@ -33,11 +33,13 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
+  height: 100svh;
   font-family: var(--font);
   font-size: 1.125rem;
   line-height: 1.45;
   color: var(--text);
   background: var(--bg);
+  overflow: hidden;
 }
 
 .sr-only {
@@ -95,14 +97,17 @@ body {
 .app {
   max-width: 520px;
   margin: 0 auto;
-  padding: 20px 20px 32px;
+  padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
 }
 
 .app__header {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
 .app__title {
@@ -350,7 +355,7 @@ body {
 .clock-wrap {
   display: flex;
   justify-content: center;
-  margin: 8px 0 20px;
+  margin: 6px 0 14px;
 }
 
 .clock-wrap[hidden] {
@@ -382,7 +387,7 @@ body {
 }
 
 .clock {
-  max-width: min(92vw, 320px);
+  max-width: min(88vw, 300px);
   height: auto;
   filter: drop-shadow(0 6px 16px rgba(26, 21, 35, 0.1));
 }
@@ -433,6 +438,61 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Keep the page non-scrollable: on short screens, tighten spacing/sizing so everything fits. */
+@media (max-height: 740px) {
+  body {
+    font-size: 1.05rem;
+  }
+
+  .app {
+    padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .app__actions {
+    gap: 8px;
+  }
+
+  .clock-wrap {
+    margin: 4px 0 10px;
+  }
+
+  .clock {
+    max-width: min(82vw, 260px);
+  }
+
+  .choices__hint {
+    margin-bottom: 10px;
+  }
+
+  .choices__grid {
+    gap: 10px;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    min-height: 44px;
+  }
+
+  .btn--xl {
+    font-size: 1.15rem;
+    padding: 14px 22px;
+    min-height: 52px;
+  }
+
+  .btn--numberpick,
+  .btn--letterpick {
+    min-height: 82px;
+  }
+
+  .btn--clockpick {
+    min-height: 132px;
+  }
+
+  .mini-clock {
+    width: min(40vw, 150px);
+  }
 }
 
 .choices__grid--clocks {
