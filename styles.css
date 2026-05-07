@@ -437,65 +437,31 @@ body {
   gap: 12px;
 }
 
-/* Keep the page non-scrollable: on short screens, tighten spacing/sizing so everything fits. */
-@media (max-height: 740px) {
+/* Very short viewports: compact spacing only (scroll still available). */
+@media (max-height: 620px) {
   body {
     font-size: 1.05rem;
   }
 
   .app {
-    padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
-  }
-
-  /* Prioritize the learning UI over settings on small screens. */
-  .session-scores,
-  .lang,
-  .segmented {
-    display: none;
+    padding: calc(10px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom));
   }
 
   .app__actions {
-    gap: 8px;
+    gap: 6px;
   }
 
   .clock-wrap {
-    margin: 4px 0 10px;
-  }
-
-  .clock {
-    max-width: min(78vw, 220px);
+    margin: 2px 0 8px;
   }
 
   .choices__hint {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
   }
 
   .choices__grid {
-    gap: 10px;
-  }
-
-  .btn {
-    padding: 10px 14px;
-    min-height: 44px;
-  }
-
-  .btn--xl {
-    font-size: 1.15rem;
-    padding: 14px 22px;
-    min-height: 52px;
-  }
-
-  .btn--numberpick,
-  .btn--letterpick {
-    min-height: 82px;
-  }
-
-  .btn--clockpick {
-    min-height: 132px;
-  }
-
-  .mini-clock {
-    width: min(40vw, 150px);
+    gap: 8px;
   }
 }
 
@@ -664,5 +630,210 @@ body {
 
   .mini-clock {
     width: min(40vw, 140px);
+  }
+}
+
+/*
+ * Samsung Galaxy S8 (and similar): CSS viewport is typically 360×640+ in Chrome.
+ * Tighter typography and controls so clock + four answers feel balanced.
+ */
+@media (max-width: 360px) {
+  body {
+    font-size: 0.98rem;
+    line-height: 1.4;
+  }
+
+  .app {
+    max-width: 100%;
+    padding: calc(8px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .app__header {
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+
+  .app__title {
+    font-size: 1.12rem;
+  }
+
+  .app__actions {
+    gap: 6px;
+    row-gap: 6px;
+  }
+
+  .segmented {
+    padding: 3px;
+    gap: 4px;
+    border-radius: 12px;
+  }
+
+  .segmented__btn {
+    padding: 6px 8px;
+    min-height: 40px;
+    font-size: 0.78rem;
+  }
+
+  .lang {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .lang__label {
+    font-size: 0.8rem;
+  }
+
+  .lang__select {
+    padding: 4px 8px;
+    font-size: 0.85rem;
+  }
+
+  .scorecard {
+    padding: 5px 7px;
+    gap: 6px;
+  }
+
+  .scorecard__label {
+    font-size: 0.8rem;
+  }
+
+  .scorecard__counts {
+    font-size: 0.8rem;
+  }
+
+  .scoregauge {
+    width: 10px;
+    height: 26px;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    min-height: 42px;
+    border-radius: 10px;
+    font-size: 0.92rem;
+  }
+
+  .btn--icon {
+    min-width: 42px;
+    padding: 0 8px;
+    font-size: 1.15rem;
+  }
+
+  .btn__label {
+    font-size: 0.88rem;
+  }
+
+  .clock-wrap {
+    margin: 2px 0 8px;
+  }
+
+  .clock {
+    max-width: min(70vw, 198px);
+  }
+
+  .numbers {
+    margin: 4px 0 10px;
+  }
+
+  .numbers__value {
+    width: min(88vw, 260px);
+    padding: 10px 12px;
+    font-size: clamp(2.2rem, 12vw, 3.2rem);
+  }
+
+  .choices__hint {
+    margin: 0 0 8px;
+    font-size: 0.88rem;
+  }
+
+  .choices__hint--hint {
+    margin-top: -6px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+
+  .choices__grid {
+    gap: 8px;
+  }
+
+  .choices__grid--clocks,
+  .choices__grid--numbers,
+  .choices__grid--letters {
+    gap: 8px;
+  }
+
+  .choice-row {
+    gap: 8px;
+  }
+
+  .btn--pick {
+    min-height: 44px;
+    padding: 7px 10px;
+    font-size: 0.92rem;
+    border-width: 2px;
+  }
+
+  .btn-pick__time {
+    font-size: 0.82rem;
+    margin-left: 6px;
+  }
+
+  .btn--listen {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 1.15rem;
+    border-width: 2px;
+  }
+
+  .btn--numberpick,
+  .btn--letterpick {
+    min-height: 58px;
+    font-size: clamp(1.5rem, 9vw, 2.2rem);
+    border-width: 2px;
+  }
+
+  .btn--audiopick {
+    min-height: 56px;
+    font-size: 1.25rem;
+  }
+
+  .btn--clockpick {
+    min-height: 96px;
+    padding: 8px;
+  }
+
+  .mini-clock {
+    width: min(38vw, 118px);
+  }
+
+  .start-overlay {
+    padding: 12px;
+  }
+
+  .start-card {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .start-card h1 {
+    font-size: 1.35rem;
+    margin-bottom: 8px;
+  }
+
+  .start-hint {
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+  }
+
+  .segmented--start {
+    margin-bottom: 12px;
+  }
+
+  .btn--xl {
+    font-size: 1.05rem;
+    padding: 12px 18px;
+    min-height: 48px;
+    border-radius: 12px;
   }
 }
