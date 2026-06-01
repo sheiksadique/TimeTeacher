@@ -1,5 +1,5 @@
 /**
- * TimeTeacher — hours & half-hours quiz with speech + SVG clock
+ * TimeTeacher — hours, quarters & half-hours quiz with speech + SVG clock
  */
 (function () {
   "use strict";
@@ -221,9 +221,12 @@
 
   /** @returns {ClockTime[]} */
   function allTimes() {
+    const minutes = [0, 15, 30, 45];
     const out = [];
     for (let h = 1; h <= 12; h++) {
-      out.push({ hour: h, minute: 0 }, { hour: h, minute: 30 });
+      for (const minute of minutes) {
+        out.push({ hour: h, minute });
+      }
     }
     return out;
   }
@@ -235,6 +238,11 @@
     return `${t.hour}:${t.minute}`;
   }
 
+  /** @param {number} hour 1–12 */
+  function nextHour(hour) {
+    return hour === 12 ? 1 : hour + 1;
+  }
+
   /** @param {ClockTime} t */
   function phraseForTime(t) {
     if (currentLang === "de") {
@@ -243,30 +251,37 @@
         const word = t.hour === 1 ? "ein" : NUMBER_WORDS_DE[t.hour];
         return `${word} Uhr`;
       }
-      // German half-hours are commonly relative to the next hour: 1:30 => "halb zwei"
-      const next = t.hour === 12 ? 1 : t.hour + 1;
-      return `halb ${NUMBER_WORDS_DE[next]}`;
+      if (t.minute === 15) return `Viertel nach ${NUMBER_WORDS_DE[t.hour]}`;
+      if (t.minute === 45) return `Viertel vor ${NUMBER_WORDS_DE[nextHour(t.hour)]}`;
+      // Half-hours are relative to the next hour: 1:30 => "halb zwei"
+      return `halb ${NUMBER_WORDS_DE[nextHour(t.hour)]}`;
     }
 
-    if (t.minute === 0) return `${NUMBER_WORDS_EN[t.hour]} o'clock`;
-    return `half past ${NUMBER_WORDS_EN[t.hour]}`;
+    const hourWord = NUMBER_WORDS_EN[t.hour];
+    if (t.minute === 0) return `${hourWord} o'clock`;
+    if (t.minute === 15) return `${hourWord} fifteen`;
+    if (t.minute === 45) return `${hourWord} forty-five`;
+    return `half past ${hourWord}`;
   }
 
   /** @param {ClockTime} t */
   function displayShort(t) {
-    const h = t.hour;
-    const m = t.minute === 0 ? "00" : "30";
-    return `${h}:${m}`;
+    const m = String(t.minute).padStart(2, "0");
+    return `${t.hour}:${m}`;
   }
 
   /** @param {ClockTime} t */
   function ariaForTime(t) {
     if (currentLang === "de") {
       if (t.minute === 0) return `${t.hour} Uhr`;
-      const next = t.hour === 12 ? 1 : t.hour + 1;
-      return `halb ${next}`;
+      if (t.minute === 15) return `Viertel nach ${t.hour}`;
+      if (t.minute === 45) return `Viertel vor ${nextHour(t.hour)}`;
+      return `halb ${nextHour(t.hour)}`;
     }
-    return t.minute === 0 ? `${t.hour} o'clock` : `half past ${t.hour}`;
+    if (t.minute === 0) return `${t.hour} o'clock`;
+    if (t.minute === 15) return `${t.hour} fifteen`;
+    if (t.minute === 45) return `${t.hour} forty-five`;
+    return `half past ${t.hour}`;
   }
 
   // ——— Speech ———

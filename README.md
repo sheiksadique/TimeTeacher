@@ -1,6 +1,6 @@
 # TimeTeacher
 
-A small web quiz to practice reading an **analog clock** at **whole hours** and **half hours**. Spoken prompts use the browser’s **text-to-speech** so young children can play without reading full sentences (numbers still appear as a bridge).
+A small web quiz to practice reading an **analog clock** at **whole hours**, **quarter hours** (e.g. 6:15, 6:45), and **half hours**. Spoken prompts use the browser’s **text-to-speech** so young children can play without reading full sentences (numbers still appear as a bridge).
 
 It supports **two quiz types** (mixed randomly):
 
@@ -44,7 +44,7 @@ Note: audio prompts require a user gesture (tap), so the app starts with a **Sta
 ## Using it with a child
 
 1. Tap **Start** once (needed so audio can play, especially on **iPad/iPhone Safari**).
-2. A clock appears at a random hour or half hour.
+2. A clock appears at a random hour, quarter hour, or half hour.
 3. The app asks aloud what to do.
 4. **Normal rounds**: tap the matching **time**.
 5. **Reverse rounds**: tap the matching **clock face** (use **Hint** if needed).

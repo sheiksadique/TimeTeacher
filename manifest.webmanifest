@@ -1,7 +1,7 @@
 {
   "name": "TimeTeacher",
   "short_name": "TimeTeacher",
-  "description": "Learn to read an analog clock — whole hours and half hours.",
+  "description": "Learn to read an analog clock — hours, quarters, and half hours.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
